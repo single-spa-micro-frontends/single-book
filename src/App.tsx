@@ -20,6 +20,16 @@ const App = () => {
   const [mainImage, setMainImage] = useState("");
   const [quantity, setQuantity] = useState(1);
 
+  useEffect(() => {
+    const selectedBookSub = window.eventBus.selectedBookState$.subscribe(
+      (state: any) => {
+        setSelectedBook(state.book);
+      }
+    );
+
+    return () => selectedBookSub.unsubscribe();
+  }, []);
+
   const fetchBookDetails = useCallback(async (bookId: number) => {
     try {
       const response = await fetch(
@@ -74,7 +84,7 @@ const App = () => {
       quantity: quantity,
     };
 
-    // addToCart(data);
+    (window as any).eventBus.addToCart(data);
   };
 
   useEffect(() => {
