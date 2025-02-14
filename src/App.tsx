@@ -1,50 +1,52 @@
 import { useState, useEffect, useCallback } from "react";
 import Button from "./components/Button";
 import artOfCoding from "./assets/artOfCoding.jpg";
+import { Book, EnrichedWindow, SelectedBook } from "./types";
 
 const App = () => {
-  const [selectedBook, setSelectedBook] = useState(null);
+  const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
 
-  const [book, setBook] = useState({
+  const [book, setBook] = useState<SelectedBook>({
+    id: "",
     title: "",
     author: "",
-    price: 0,
+    price: "0",
     description: "",
     publisher: "",
     publicationDate: "",
     language: "",
     pageCount: 0,
-    images: [],
+    images: ["", ""],
   });
 
-  const [mainImage, setMainImage] = useState("");
+  const [mainImage, setMainImage] = useState<string | undefined>("");
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
-    const selectedBookSub = window.eventBus.selectedBookState$.subscribe(
-      (state: any) => {
-        setSelectedBook(state.book);
-      }
-    );
+    const selectedBookSub = (
+      window as unknown as EnrichedWindow
+    ).eventBus.selectedBookState$.subscribe((state: { book: string }) => {
+      setSelectedBookId(state.book);
+    });
 
     return () => selectedBookSub.unsubscribe();
   }, []);
 
-  const fetchBookDetails = useCallback(async (bookId: number) => {
+  const fetchBookDetails = useCallback(async (bookId: string) => {
     try {
       const response = await fetch(
         `https://www.googleapis.com/books/v1/volumes/${bookId}`
       );
-      const data = await response.json();
+      const data = (await response.json()) as Book;
       const volumeInfo = data.volumeInfo;
 
-      const bookData = {
+      const bookData: SelectedBook = {
         id: data.id,
         title: volumeInfo.title,
         author: volumeInfo.authors?.join(", ") || "Unknown Author",
         price: (data.saleInfo?.listPrice?.amount || 12.49).toFixed(2),
         description:
-          parseHTMLtoText(volumeInfo.description)
+          parseHTMLtoText(volumeInfo.description || "")
             .substring(0, 500)
             .concat("...") || "No description available.",
         publisher: volumeInfo.publisher || "Unknown Publisher",
@@ -69,10 +71,10 @@ const App = () => {
   const parseHTMLtoText = (htmlString: string) => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlString, "text/html");
-    return doc.body.textContent.trim();
+    return doc.body.textContent?.trim() || "";
   };
 
-  const handleThumbnailClick = (image) => {
+  const handleThumbnailClick = (image: string | undefined) => {
     setMainImage(image);
   };
 
@@ -84,14 +86,14 @@ const App = () => {
       quantity: quantity,
     };
 
-    (window as any).eventBus.addToCart(data);
+    (window as unknown as EnrichedWindow).eventBus.addToCart(data);
   };
 
   useEffect(() => {
-    if (selectedBook) {
-      fetchBookDetails(selectedBook);
+    if (selectedBookId) {
+      void fetchBookDetails(selectedBookId);
     }
-  }, [selectedBook, fetchBookDetails]);
+  }, [selectedBookId, fetchBookDetails]);
 
   return (
     <div className="flex w-full h-full items-center justify-center">
